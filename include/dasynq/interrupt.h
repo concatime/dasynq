@@ -4,9 +4,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "dasynq-config.h"
-#include "dasynq-mutex.h"
-#include "dasynq-util.h"
+#include "dasynq/config.h"
+#include "dasynq/mutex.h"
+#include "dasynq/util.h"
 
 /*
  * Mechanism for interrupting an event loop wait.

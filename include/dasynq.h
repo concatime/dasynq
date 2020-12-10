@@ -1,12 +1,12 @@
 #ifndef DASYNQ_H_INCLUDED
 #define DASYNQ_H_INCLUDED
 
-#include "dasynq-config.h"
+#include "dasynq/config.h"
 
-#include "dasynq-flags.h"
-#include "dasynq-stableheap.h"
-#include "dasynq-interrupt.h"
-#include "dasynq-util.h"
+#include "dasynq/flags.h"
+#include "dasynq/stableheap.h"
+#include "dasynq/interrupt.h"
+#include "dasynq/util.h"
 
 // Dasynq uses a "mix-in" pattern to produce an event loop implementation incorporating selectable
 // implementations of various components (main backend, timers, child process watch mechanism etc). In C++
@@ -82,12 +82,12 @@
 
 #if DASYNQ_HAVE_EPOLL <= 0
 #if _POSIX_TIMERS > 0
-#include "dasynq-posixtimer.h"
+#include "dasynq/posixtimer.h"
 namespace dasynq {
     template <typename T, bool provide_mono_timer = true> using timer_events = posix_timer_events<T, provide_mono_timer>;
 }
 #else
-#include "dasynq-itimer.h"
+#include "dasynq/itimer.h"
 namespace dasynq {
     template <typename T, bool provide_mono_timer = true> using timer_events = itimer_events<T, provide_mono_timer>;
 }
@@ -96,38 +96,38 @@ namespace dasynq {
 
 #if DASYNQ_HAVE_KQUEUE
 #if DASYNQ_KQUEUE_MACOS_WORKAROUND
-#include "dasynq-kqueue-macos.h"
-#include "dasynq-childproc.h"
+#include "dasynq/kqueue-macos.h"
+#include "dasynq/childproc.h"
 namespace dasynq {
     template <typename T> using loop_t = macos_kqueue_loop<timer_events<child_proc_events<interrupt_channel<T>>, false>>;
     using loop_traits_t = macos_kqueue_traits;
 }
 #else
-#include "dasynq-kqueue.h"
-#include "dasynq-childproc.h"
+#include "dasynq/kqueue.h"
+#include "dasynq/childproc.h"
 namespace dasynq {
     template <typename T> using loop_t = kqueue_loop<timer_events<child_proc_events<interrupt_channel<T>>, false>>;
     using loop_traits_t = kqueue_traits;
 }
 #endif
 #elif DASYNQ_HAVE_EPOLL
-#include "dasynq-epoll.h"
-#include "dasynq-timerfd.h"
-#include "dasynq-childproc.h"
+#include "dasynq/epoll.h"
+#include "dasynq/timerfd.h"
+#include "dasynq/childproc.h"
 namespace dasynq {
     template <typename T> using loop_t = epoll_loop<interrupt_channel<timer_fd_events<child_proc_events<T>>>>;
     using loop_traits_t = epoll_traits;
 }
 #else
-#include "dasynq-childproc.h"
+#include "dasynq/childproc.h"
 #if DASYNQ_HAVE_PSELECT
-#include "dasynq-pselect.h"
+#include "dasynq/pselect.h"
 namespace dasynq {
     template <typename T> using loop_t = pselect_events<timer_events<interrupt_channel<child_proc_events<T>>, false>>;
     using loop_traits_t = select_traits;
 }
 #else
-#include "dasynq-select.h"
+#include "dasynq/select.h"
 namespace dasynq {
     template <typename T> using loop_t = select_events<timer_events<interrupt_channel<child_proc_events<T>>, false>>;
     using loop_traits_t = select_traits;
@@ -144,9 +144,9 @@ namespace dasynq {
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "dasynq-mutex.h"
+#include "dasynq/mutex.h"
 
-#include "dasynq-basewatchers.h"
+#include "dasynq/basewatchers.h"
 
 namespace dasynq {
 
@@ -200,11 +200,11 @@ namespace dprivate {
     {
         // Specialised waitqueue_node for null_mutex.
         friend class waitqueue<null_mutex>;
-        
+
         public:
         void wait(std::unique_lock<null_mutex> &ul) { }
         void signal() { }
-        
+
         DASYNQ_EMPTY_BODY;
     };
 
@@ -215,13 +215,13 @@ namespace dprivate {
 
         // ptr to next node in queue, set to null when added to queue tail:
         waitqueue_node * next;
-        
+
         public:
         void signal()
         {
             condvar.notify_one();
         }
-        
+
         void wait(std::unique_lock<T_Mutex> &mutex_lock)
         {
             condvar.wait(mutex_lock);
@@ -236,12 +236,12 @@ namespace dprivate {
         {
             return nullptr;
         }
-        
+
         waitqueue_node<null_mutex> * get_head()
         {
             return nullptr;
         }
-        
+
         waitqueue_node<null_mutex> * get_second()
         {
             return nullptr;
@@ -251,12 +251,12 @@ namespace dprivate {
         {
             return true;
         }
-        
+
         bool is_empty()
         {
             return true;
         }
-        
+
         void queue(waitqueue_node<null_mutex> *node)
         {
         }
@@ -277,12 +277,12 @@ namespace dprivate {
             }
             return head;
         }
-        
+
         waitqueue_node<T_Mutex> * get_head()
         {
             return head;
         }
-        
+
         waitqueue_node<T_Mutex> * get_second()
         {
             return head->next;
@@ -292,12 +292,12 @@ namespace dprivate {
         {
             return head == &node;
         }
-        
+
         bool is_empty()
         {
             return head == nullptr;
         }
-        
+
         void queue(waitqueue_node<T_Mutex> *node)
         {
             node->next = nullptr;
@@ -310,7 +310,7 @@ namespace dprivate {
             tail = node;
         }
     };
-    
+
     // friend of event_loop for giving access to various private members
     class loop_access {
         public:
@@ -430,23 +430,23 @@ namespace dprivate {
 
         // queue data structure/pointer
         prio_queue event_queue;
-        
+
         using base_signal_watcher = dprivate::base_signal_watcher<typename traits_t::sigdata_t>;
         using base_child_watcher = dprivate::base_child_watcher;
         using base_timer_watcher = dprivate::base_timer_watcher;
-        
+
         // Add a watcher into the queueing system (but don't queue it). Call with lock held.
         //   may throw: std::bad_alloc
         void prepare_watcher(base_watcher *bwatcher)
         {
             allocate_handle(event_queue, bwatcher->heap_handle, bwatcher);
         }
-        
+
         void queue_watcher(base_watcher *bwatcher) noexcept
         {
             event_queue.insert(bwatcher->heap_handle, bwatcher->priority);
         }
-        
+
         void dequeue_watcher(base_watcher *bwatcher) noexcept
         {
             if (event_queue.is_queued(bwatcher->heap_handle)) {
@@ -459,12 +459,12 @@ namespace dprivate {
         {
             event_queue.deallocate(bwatcher->heap_handle);
         }
-        
+
         protected:
         mutex_t lock;
 
         template <typename T> void init(T *loop) noexcept { }
-        
+
         void sigmaskf(int how, const sigset_t *set, sigset_t *oset)
         {
             LoopTraits::sigmaskf(how, set, oset);
@@ -480,7 +480,7 @@ namespace dprivate {
             queue_watcher(bwatcher);
             return true;
         }
-        
+
         // Receive fd event delivered from backend mechansim. Returns the desired watch mask, as per
         // set_fd_enabled, which can be used to leave the watch disabled, re-enable it or re-enable
         // one direction of a bi-directional watcher.
@@ -489,28 +489,28 @@ namespace dprivate {
                 void * userdata, int flags) noexcept
         {
             base_fd_watcher * bfdw = static_cast<base_fd_watcher *>(userdata);
-            
+
             bfdw->event_flags |= flags;
             typename Traits::fd_s watch_fd_s {bfdw->watch_fd};
-            
+
             base_watcher * bwatcher = bfdw;
-            
+
             bool is_multi_watch = bfdw->watch_flags & multi_watch;
-            if (is_multi_watch) {                
+            if (is_multi_watch) {
                 base_bidi_fd_watcher *bbdw = static_cast<base_bidi_fd_watcher *>(bwatcher);
                 bbdw->watch_flags &= ~flags;
                 if ((flags & IN_EVENTS) && (flags & OUT_EVENTS)) {
                     // Queue the secondary watcher first:
                     queue_watcher(&bbdw->out_watcher);
                 }
-                else if (flags & OUT_EVENTS) {                
+                else if (flags & OUT_EVENTS) {
                     // Use the secondary watcher for queueing:
                     bwatcher = &(bbdw->out_watcher);
                 }
             }
 
             queue_watcher(bwatcher);
-            
+
             if (is_multi_watch && ! traits_t::has_separate_rw_fd_watches) {
                 // If this is a bidirectional fd-watch, it has been disabled in *both* directions
                 // as the event was delivered. However, the other direction should not be disabled
@@ -526,7 +526,7 @@ namespace dprivate {
 
             return std::make_tuple(0, watch_fd_s);
         }
-        
+
         // Child process terminated. Called with both the main lock and the reaper lock held.
         void receive_child_stat(pid_t child, int status, void * userdata) noexcept
         {
@@ -535,14 +535,14 @@ namespace dprivate {
             watcher->child_termd = true;
             queue_watcher(watcher);
         }
-        
+
         void receive_timer_expiry(timer_handle_t & timer_handle, void * userdata, int intervals) noexcept
         {
             base_timer_watcher * watcher = static_cast<base_timer_watcher *>(userdata);
             watcher->intervals += intervals;
             queue_watcher(watcher);
         }
-        
+
         // Pull a single event from the queue; returns nullptr if the queue is empty.
         // Call with lock held.
         base_watcher * pull_event() noexcept
@@ -550,13 +550,13 @@ namespace dprivate {
             if (event_queue.empty()) {
                 return nullptr;
             }
-            
+
             auto & rhndl = event_queue.get_root();
             base_watcher *r = dprivate::get_watcher(event_queue, rhndl);
             event_queue.pull_root();
             return r;
         }
-        
+
         // Queue a watcher for removal, or issue "removed" callback to it.
         // Call with lock free.
         void issue_delete(base_watcher *watcher) noexcept
@@ -564,9 +564,9 @@ namespace dprivate {
             // This is only called when the attention lock is held, so if the watcher is not
             // active/queued now, it cannot become active (and will not be reported with an event)
             // during execution of this function.
-            
+
             lock.lock();
-            
+
             if (watcher->active) {
                 // If the watcher is active, set deleteme true; the watcher will be removed
                 // at the end of current processing (i.e. when active is set false).
@@ -577,18 +577,18 @@ namespace dprivate {
                 // Actually do the delete.
                 dequeue_watcher(watcher);
                 release_watcher(watcher);
-                
+
                 lock.unlock();
                 watcher->watch_removed();
             }
         }
-        
+
         // Queue a watcher for removal, or issue "removed" callback to it.
         // Call with lock free.
         void issue_delete(base_bidi_fd_watcher *watcher) noexcept
         {
             lock.lock();
-            
+
             if (watcher->active) {
                 watcher->deleteme = true;
                 release_watcher(watcher);
@@ -598,7 +598,7 @@ namespace dprivate {
                 release_watcher(watcher);
                 watcher->read_removed = true;
             }
-            
+
             base_watcher *secondary = &(watcher->out_watcher);
             if (secondary->active) {
                 secondary->deleteme = true;
@@ -609,7 +609,7 @@ namespace dprivate {
                 release_watcher(watcher);
                 watcher->write_removed = true;
             }
-            
+
             if (watcher->read_removed && watcher->write_removed) {
                 lock.unlock();
                 watcher->watch_removed();
@@ -647,7 +647,7 @@ class event_loop
     friend class dprivate::signal_watcher<my_event_loop_t>;
     friend class dprivate::child_proc_watcher<my_event_loop_t>;
     friend class dprivate::timer<my_event_loop_t>;
-    
+
     friend class dprivate::loop_access;
 
     using backend_traits_t = typename Traits::backend_traits_t;
@@ -661,7 +661,7 @@ class event_loop
     using traits_t = Traits;
     using loop_traits_t = typename loop_mech_t::traits_t;
     using mutex_t = T_Mutex;
-    
+
     private:
     template <typename T> using waitqueue = dprivate::waitqueue<T>;
     template <typename T> using waitqueue_node = dprivate::waitqueue_node<T>;
@@ -728,17 +728,17 @@ class event_loop
     //    - if the node is at the head of the queue, lock is claimed; return
     //    - otherwise, if a poll is in progress, interrupt it
     //    - wait until our node is at the head of the attn_waitqueue
-    
+
     mutex_t wait_lock;  // protects the wait/attention queues
     bool long_poll_running = false;  // whether any thread is polling the backend (with non-zero timeout)
     waitqueue<mutex_t> attn_waitqueue;
     waitqueue<mutex_t> wait_waitqueue;
-    
+
     mutex_t &get_base_lock() noexcept
     {
         return loop_mech.lock;
     }
-    
+
     reaper_mutex_t &get_reaper_lock() noexcept
     {
         return loop_mech.get_reaper_lock();
@@ -760,16 +760,16 @@ class event_loop
             throw;
         }
     }
-    
+
     void deregister(base_signal_watcher *callBack, int signo) noexcept
     {
         loop_mech.remove_signal_watch(signo);
-        
+
         waitqueue_node<T_Mutex> qnode;
         get_attn_lock(qnode);
-        
+
         loop_mech.issue_delete(callBack);
-        
+
         release_lock(qnode);
     }
 
@@ -799,7 +799,7 @@ class event_loop
             throw;
         }
     }
-    
+
     // Register a bidi fd watcher. The watch_flags should already be set to the eventmask to watch
     // (i.e. eventmask == callback->watch_flags is a pre-condition).
     void register_fd(base_bidi_fd_watcher *callback, int fd, int eventmask, bool emulate = false)
@@ -867,7 +867,7 @@ class event_loop
             throw;
         }
     }
-    
+
     void set_fd_enabled(base_watcher *watcher, int fd, int watch_flags, bool enabled) noexcept
     {
         if (enabled) {
@@ -893,7 +893,7 @@ class event_loop
             loop_mech.disable_fd_watch_nolock(fd, watch_flags);
         }
     }
-    
+
     void deregister(base_fd_watcher *callback, int fd) noexcept
     {
         if (callback->emulatefd) {
@@ -901,18 +901,18 @@ class event_loop
             ed.issue_delete(callback);
             return;
         }
-        
+
         loop_mech.remove_fd_watch(fd, callback->watch_flags);
 
         waitqueue_node<T_Mutex> qnode;
         get_attn_lock(qnode);
-        
+
         auto & ed = (dispatch_t &) loop_mech;
         ed.issue_delete(callback);
-        
-        release_lock(qnode);        
+
+        release_lock(qnode);
     }
-    
+
     void deregister(base_bidi_fd_watcher *callback, int fd) noexcept
     {
         if (backend_traits_t::has_separate_rw_fd_watches) {
@@ -921,16 +921,16 @@ class event_loop
         else {
             loop_mech.remove_fd_watch(fd, callback->watch_flags);
         }
-        
+
         waitqueue_node<T_Mutex> qnode;
         get_attn_lock(qnode);
-        
+
         dispatch_t & ed = (dispatch_t &) loop_mech;
         ed.issue_delete(callback);
-        
+
         release_lock(qnode);
     }
-    
+
     void reserve_child_watch(base_child_watcher *callback)
     {
         std::lock_guard<mutex_t> guard(loop_mech.lock);
@@ -944,7 +944,7 @@ class event_loop
             throw;
         }
     }
-    
+
     void unreserve(base_child_watcher *callback) noexcept
     {
         std::lock_guard<mutex_t> guard(loop_mech.lock);
@@ -952,11 +952,11 @@ class event_loop
         loop_mech.unreserve_child_watch(callback->watch_handle);
         loop_mech.release_watcher(callback);
     }
-    
+
     void register_child(base_child_watcher *callback, pid_t child)
     {
         std::lock_guard<mutex_t> guard(loop_mech.lock);
-        
+
         loop_mech.prepare_watcher(callback);
         try {
             loop_mech.add_child_watch_nolock(callback->watch_handle, child, callback);
@@ -966,7 +966,7 @@ class event_loop
             throw;
         }
     }
-    
+
     void register_reserved_child(base_child_watcher *callback, pid_t child) noexcept
     {
         loop_mech.add_reserved_child_watch(callback->watch_handle, child, callback);
@@ -976,19 +976,19 @@ class event_loop
     {
         loop_mech.add_reserved_child_watch_nolock(callback->watch_handle, child, callback);
     }
-    
+
     void deregister(base_child_watcher *callback, pid_t child) noexcept
     {
         loop_mech.remove_child_watch(callback->watch_handle);
 
         waitqueue_node<T_Mutex> qnode;
         get_attn_lock(qnode);
-        
+
         loop_mech.issue_delete(callback);
-        
+
         release_lock(qnode);
     }
-    
+
     // Stop watching a child process, but retain watch reservation so that another child can be
     // watched without running into resource allocation issues.
     void stop_watch(base_child_watcher *callback) noexcept
@@ -999,7 +999,7 @@ class event_loop
     void register_timer(base_timer_watcher *callback, clock_type clock)
     {
         std::lock_guard<mutex_t> guard(loop_mech.lock);
-    
+
         loop_mech.prepare_watcher(callback);
         try {
             loop_mech.add_timer_nolock(callback->timer_handle, callback, clock);
@@ -1008,13 +1008,13 @@ class event_loop
             loop_mech.release_watcher(callback);
         }
     }
-    
+
     void set_timer(base_timer_watcher *callBack, const timespec &timeout, clock_type clock) noexcept
     {
         struct timespec interval {0, 0};
         loop_mech.set_timer(callBack->timer_handle, timeout, interval, true, clock);
     }
-    
+
     void set_timer(base_timer_watcher *callBack, const timespec &timeout, const timespec &interval,
             clock_type clock) noexcept
     {
@@ -1026,7 +1026,7 @@ class event_loop
         struct timespec interval {0, 0};
         loop_mech.set_timer_rel(callBack->timer_handle, timeout, interval, true, clock);
     }
-    
+
     void set_timer_rel(base_timer_watcher *callBack, const timespec &timeout,
             const timespec &interval, clock_type clock) noexcept
     {
@@ -1051,15 +1051,15 @@ class event_loop
     void deregister(base_timer_watcher *callback, clock_type clock) noexcept
     {
         loop_mech.remove_timer(callback->timer_handle, clock);
-        
+
         waitqueue_node<T_Mutex> qnode;
         get_attn_lock(qnode);
-        
+
         loop_mech.issue_delete(callback);
-        
+
         release_lock(qnode);
     }
-    
+
     void dequeue_watcher(base_watcher *watcher) noexcept
     {
         loop_mech.dequeue_watcher(watcher);
@@ -1096,7 +1096,7 @@ class event_loop
     void get_attn_lock(waitqueue_node<T_Mutex> &qnode) noexcept
     {
         std::unique_lock<T_Mutex> ulock(wait_lock);
-        attn_waitqueue.queue(&qnode);        
+        attn_waitqueue.queue(&qnode);
         if (! attn_waitqueue.check_head(qnode)) {
             if (long_poll_running) {
                 // We want to interrupt any in-progress poll so that the attn queue will progress
@@ -1112,7 +1112,7 @@ class event_loop
             }
         }
     }
-    
+
     // Acquire the attention lock, but without interrupting any poll that's in progress
     // (prefer to fail in that case).
     bool poll_attn_lock(waitqueue_node<T_Mutex> &qnode) noexcept
@@ -1147,14 +1147,14 @@ class event_loop
         else {
             wait_waitqueue.queue(&qnode);
         }
-        
+
         while (! attn_waitqueue.check_head(qnode)) {
             qnode.wait(ulock);
         }
 
         long_poll_running = true;
     }
-    
+
     // Release the poll-wait/attention lock.
     void release_lock(waitqueue_node<T_Mutex> &qnode) noexcept
     {
@@ -1175,9 +1175,9 @@ class event_loop
                 long_poll_running = true;
                 nhead->signal();
             }
-        }                
+        }
     }
-    
+
     void process_signal_rearm(base_signal_watcher * bsw, rearm rearm_type) noexcept
     {
         // Called with lock held
@@ -1366,7 +1366,7 @@ class event_loop
         }
         else if (rearm_type == rearm::REARM) {
             bdfw->watch_flags |= OUT_EVENTS;
-            
+
             if (! backend_traits_t::has_separate_rw_fd_watches) {
                 int watch_flags = bdfw->watch_flags;
                 set_fd_enabled_nolock(bdfw, bdfw->watch_fd, watch_flags & (IN_EVENTS | OUT_EVENTS), true);
@@ -1377,7 +1377,7 @@ class event_loop
         }
         return rearm_type;
     }
-    
+
     void process_child_watch_rearm(base_child_watcher *bcw, rearm rearm_type) noexcept
     {
         if (rearm_type == rearm::REMOVE || rearm_type == rearm::DISARM) {
@@ -1405,23 +1405,23 @@ class event_loop
     bool process_events(int limit) noexcept
     {
         loop_mech.lock.lock();
-        
+
         if (limit == 0) {
             return false;
         }
-        
+
         base_watcher * pqueue = loop_mech.pull_event();
         bool active = false;
-        
+
         while (pqueue != nullptr) {
-        
+
             pqueue->active = true;
             active = true;
-            
+
             base_bidi_fd_watcher *bbfw = nullptr;
-            
+
             // (Above variables are initialised only to silence compiler warnings).
-            
+
             if (pqueue->watchType == watch_type_t::SECONDARYFD) {
                 // construct a pointer to the main watcher, using integer arithmetic to avoid undefined
                 // pointer arithmetic:
@@ -1449,19 +1449,19 @@ class event_loop
             }
             pqueue = loop_mech.pull_event();
         }
-        
+
         loop_mech.lock.unlock();
         return active;
     }
 
     public:
-    
+
     using fd_watcher = dprivate::fd_watcher<my_event_loop_t>;
     using bidi_fd_watcher = dprivate::bidi_fd_watcher<my_event_loop_t>;
     using signal_watcher = dprivate::signal_watcher<my_event_loop_t>;
     using child_proc_watcher = dprivate::child_proc_watcher<my_event_loop_t>;
     using timer = dprivate::timer<my_event_loop_t>;
-    
+
     template <typename D> using fd_watcher_impl = dprivate::fd_watcher_impl<my_event_loop_t, D>;
     template <typename D> using bidi_fd_watcher_impl = dprivate::bidi_fd_watcher_impl<my_event_loop_t, D>;
     template <typename D> using signal_watcher_impl = dprivate::signal_watcher_impl<my_event_loop_t, D>;
@@ -1531,7 +1531,7 @@ class signal_watcher : private dprivate::base_signal_watcher<typename EventLoop:
 
     using base_watcher = dprivate::base_watcher;
     using T_Mutex = typename EventLoop::mutex_t;
-    
+
     public:
     using event_loop_t = EventLoop;
     using siginfo_p = typename signal_watcher::siginfo_p;
@@ -1547,12 +1547,12 @@ class signal_watcher : private dprivate::base_signal_watcher<typename EventLoop:
         this->siginfo.set_signo(signo);
         eloop.register_signal(this, signo);
     }
-    
+
     inline void deregister(event_loop_t &eloop) noexcept
     {
         eloop.deregister(this, this->siginfo.get_signo());
     }
-    
+
     template <typename T>
     static signal_watcher<event_loop_t> *add_watch(event_loop_t &eloop, int signo, T watch_hndlr)
     {
@@ -1623,7 +1623,7 @@ class fd_watcher : private dprivate::base_fd_watcher
     using mutex_t = typename EventLoop::mutex_t;
 
     protected:
-    
+
     // Set the types of event to watch. Only supported if loop_traits_t_t::has_bidi_fd_watch
     // is true; otherwise has unspecified behavior.
     // Only safe to call from within the callback handler (fdEvent). Might not take
@@ -1632,9 +1632,9 @@ class fd_watcher : private dprivate::base_fd_watcher
     {
         this->watch_flags = newFlags;
     }
-    
+
     public:
-    
+
     using event_loop_t = EventLoop;
 
     // Register a file descriptor watcher with an event loop. Flags
@@ -1667,12 +1667,12 @@ class fd_watcher : private dprivate::base_fd_watcher
         this->watch_flags = flags;
         eloop.register_fd(this, fd, flags, enabled, false);
     }
-    
+
     int get_watched_fd()
     {
         return this->watch_fd;
     }
-    
+
     // Deregister a file descriptor watcher.
     //
     // If other threads may be polling the event loop, it is not safe to assume
@@ -1685,7 +1685,7 @@ class fd_watcher : private dprivate::base_fd_watcher
     {
         eloop.deregister(this, this->watch_fd);
     }
-    
+
     void set_enabled(event_loop_t &eloop, bool enable) noexcept
     {
         std::lock_guard<mutex_t> guard(eloop.get_base_lock());
@@ -1703,7 +1703,7 @@ class fd_watcher : private dprivate::base_fd_watcher
             eloop.dequeue_watcher(this);
         }
     }
-    
+
     // Add an Fd watch via a lambda. The watch is allocated dynamically and destroys
     // itself when removed from the event loop.
     template <typename T>
@@ -1730,12 +1730,12 @@ class fd_watcher : private dprivate::base_fd_watcher
                 delete this;
             }
         };
-        
+
         lambda_fd_watcher * lfd = new lambda_fd_watcher(watchHndlr);
         lfd->add_watch(eloop, fd, flags);
         return lfd;
     }
-    
+
     // virtual rearm fd_event(EventLoop &eloop, int fd, int flags) = 0;
 };
 
@@ -1781,12 +1781,12 @@ class bidi_fd_watcher : private dprivate::base_bidi_fd_watcher
 
     using base_watcher = dprivate::base_watcher;
     using mutex_t = typename EventLoop::mutex_t;
-    
+
     void set_watch_enabled(EventLoop &eloop, bool in, bool b)
     {
         int events = in ? IN_EVENTS : OUT_EVENTS;
         auto orig_flags = this->watch_flags;
-        
+
         if (b) {
             this->watch_flags |= events;
         }
@@ -1818,7 +1818,7 @@ class bidi_fd_watcher : private dprivate::base_bidi_fd_watcher
             eloop.dequeue_watcher(watcher);
         }
     }
-    
+
     public:
 
     using event_loop_t = EventLoop;
@@ -1829,14 +1829,14 @@ class bidi_fd_watcher : private dprivate::base_bidi_fd_watcher
         set_watch_enabled(eloop, true, b);
         eloop.get_base_lock().unlock();
     }
-    
+
     void set_out_watch_enabled(event_loop_t &eloop, bool b) noexcept
     {
         eloop.get_base_lock().lock();
         set_watch_enabled(eloop, false, b);
         eloop.get_base_lock().unlock();
     }
-    
+
     // Set the watch flags, which enables/disables both the in-watch and the out-watch accordingly.
     //
     // Concurrency: this method can only be called if
@@ -1858,7 +1858,7 @@ class bidi_fd_watcher : private dprivate::base_bidi_fd_watcher
             eloop.set_fd_enabled_nolock((dprivate::base_watcher *) this, this->watch_fd, this->watch_flags & IO_EVENTS, true);
         }
     }
-    
+
     // Register a bi-direction file descriptor watcher with an event loop. Flags
     // can be any combination of dasynq::IN_EVENTS / dasynq::OUT_EVENTS.
     //
@@ -1893,7 +1893,7 @@ class bidi_fd_watcher : private dprivate::base_bidi_fd_watcher
     {
         return this->watch_fd;
     }
-    
+
     // Deregister a bi-direction file descriptor watcher.
     //
     // If other threads may be polling the event loop, it is not safe to assume
@@ -1906,7 +1906,7 @@ class bidi_fd_watcher : private dprivate::base_bidi_fd_watcher
     {
         eloop.deregister(this, this->watch_fd);
     }
-    
+
     template <typename T>
     static bidi_fd_watcher<event_loop_t> *add_watch(event_loop_t &eloop, int fd, int flags, T watch_hndlr)
     {
@@ -2041,12 +2041,12 @@ class child_proc_watcher : private dprivate::base_child_watcher
     {
         eloop.reserve_child_watch(this);
     }
-    
+
     void unreserve(event_loop_t &eloop)
     {
         eloop.unreserve(this);
     }
-    
+
     // Register a watcher for the given child process with an event loop.
     // Registration can fail with std::bad_alloc.
     // Note that in multi-threaded programs, use of this function may be prone to a
@@ -2058,7 +2058,7 @@ class child_proc_watcher : private dprivate::base_child_watcher
         this->priority = prio;
         eloop.register_child(this, child);
     }
-    
+
     // Register a watcher for the given child process with an event loop,
     // after having reserved resources previously (using reserveWith).
     // Registration cannot fail.
@@ -2072,12 +2072,12 @@ class child_proc_watcher : private dprivate::base_child_watcher
         this->priority = prio;
         eloop.register_reserved_child(this, child);
     }
-    
+
     void deregister(event_loop_t &eloop, pid_t child) noexcept
     {
         eloop.deregister(this, child);
     }
-    
+
     // Stop watching the currently watched child, but retain watch reservation.
     void stop_watch(event_loop_t &eloop) noexcept
     {
@@ -2101,10 +2101,10 @@ class child_proc_watcher : private dprivate::base_child_watcher
             if (! from_reserved) {
                 reserve_watch(eloop);
             }
-            
+
             auto &lock = eloop.get_base_lock();
             lock.lock();
-            
+
             pid_t child = ::fork();
             if (child == -1) {
                 // Unreserve watch.
@@ -2112,13 +2112,13 @@ class child_proc_watcher : private dprivate::base_child_watcher
                 unreserve(eloop);
                 throw std::system_error(errno, std::system_category());
             }
-            
+
             if (child == 0) {
                 // I am the child
                 lock.unlock(); // may not really be necessary
                 return 0;
             }
-            
+
             // Register this watcher.
             this->watch_pid = child;
             eloop.register_reserved_child_nolock(this, child);
@@ -2130,42 +2130,42 @@ class child_proc_watcher : private dprivate::base_child_watcher
             if (pipe2(pipefds, O_CLOEXEC) == -1) {
                 throw std::system_error(errno, std::system_category());
             }
-            
+
             std::lock_guard<mutex_t> guard(eloop.get_base_lock());
-            
+
             pid_t child = ::fork();
             if (child == -1) {
                 throw std::system_error(errno, std::system_category());
             }
-            
+
             if (child == 0) {
                 // I am the child
                 close(pipefds[1]);
-                
+
                 // Wait for message from parent before continuing:
                 int rr;
                 int r = read(pipefds[0], &rr, sizeof(rr));
                 while (r == -1 && errno == EINTR) {
                     r = read(pipefds[0], &rr, sizeof(rr));
                 }
-                
+
                 if (r <= 0) _exit(0);
-                
+
                 close(pipefds[0]);
                 return 0;
             }
-            
+
             close(pipefds[0]); // close read end
-            
+
             // Register this watcher.
             try {
                 this->watch_pid = child;
                 eloop.register_child(this, child);
-                
+
                 // Continue in child (it doesn't matter what is written):
                 write(pipefds[1], &pipefds, sizeof(int));
                 close(pipefds[1]);
-                
+
                 return child;
             }
             catch (...) {
@@ -2174,7 +2174,7 @@ class child_proc_watcher : private dprivate::base_child_watcher
             }
         }
     }
-    
+
     // virtual rearm child_status(EventLoop &eloop, pid_t child, int status) = 0;
 };
 
@@ -2215,7 +2215,7 @@ class timer : private base_timer_watcher
 
     public:
     using event_loop_t = EventLoop;
-    
+
     void add_timer(event_loop_t &eloop, clock_type clock = clock_type::MONOTONIC, int prio = DEFAULT_PRIORITY)
     {
         base_watcher::init();
@@ -2224,12 +2224,12 @@ class timer : private base_timer_watcher
         this->intervals = 0;
         eloop.register_timer(this, clock);
     }
-    
+
     void arm_timer(event_loop_t &eloop, const timespec &timeout) noexcept
     {
         eloop.set_timer(this, timeout, base_t::clock);
     }
-    
+
     void arm_timer(event_loop_t &eloop, const timespec &timeout, const timespec &interval) noexcept
     {
         eloop.set_timer(this, timeout, interval, base_t::clock);
@@ -2240,13 +2240,13 @@ class timer : private base_timer_watcher
     {
         eloop.set_timer_rel(this, timeout, base_t::clock);
     }
-    
+
     void arm_timer_rel(event_loop_t &eloop, const timespec &timeout,
             const timespec &interval) noexcept
     {
         eloop.set_timer_rel(this, timeout, interval, base_t::clock);
     }
-    
+
     void stop_timer(event_loop_t &eloop) noexcept
     {
         eloop.stop_timer(this, base_t::clock);

@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "dasynq-timerbase.h"
+#include "dasynq/timerbase.h"
 
 namespace dasynq {
 
@@ -20,7 +20,7 @@ template <class Base, bool provide_mono_timer = true>
 class itimer_events : public timer_base<Base>
 {
     private:
-    
+
     // Set the alarm timeout to match the first timer in the queue (disable the alarm if there are no
     // active timers).
     void set_timer_from_queue()
@@ -88,9 +88,9 @@ class itimer_events : public timer_base<Base>
 
         setitimer(ITIMER_REAL, &newalarm, nullptr);
     }
-    
+
     protected:
-    
+
     using sigdata_t = typename Base::sigdata_t;
 
     template <typename T>
@@ -173,7 +173,7 @@ class itimer_events : public timer_base<Base>
             timer_base<Base>::get_time(curtime, clock_type::SYSTEM, true);
             timer_base<Base>::process_timer_queue(timer_queue, curtime);
         }
-        
+
 #ifdef CLOCK_MONOTONIC
         if (provide_mono_timer) {
             auto &mono_timer_queue = this->queue_for_clock(clock_type::MONOTONIC);
@@ -209,7 +209,7 @@ class itimer_events : public timer_base<Base>
         }
         Base::init(loop_mech);
     }
-    
+
     // starts (if not started) a timer to timeout at the given time. Resets the expiry count to 0.
     //   enable: specifies whether to enable reporting of timeouts/intervals
     void set_timer(timer_handle_t &timer_id, const time_val &timeouttv, const time_val &intervaltv,
@@ -245,7 +245,7 @@ class itimer_events : public timer_base<Base>
         }
     }
 
-    // Set timer relative to current time:    
+    // Set timer relative to current time:
     void set_timer_rel(timer_handle_t &timer_id, const time_val &timeouttv, const time_val &intervaltv,
             bool enable, clock_type clock = clock_type::MONOTONIC) noexcept
     {
@@ -262,7 +262,7 @@ class itimer_events : public timer_base<Base>
         }
         set_timer(timer_id, curtime, interval, enable, clock);
     }
-    
+
     void stop_timer(timer_handle_t &timer_id, clock_type clock = clock_type::MONOTONIC) noexcept
     {
         std::lock_guard<decltype(Base::lock)> guard(Base::lock);

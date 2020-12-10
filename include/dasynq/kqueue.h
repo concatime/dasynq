@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include "dasynq-config.h"
+#include "dasynq/config.h"
 
 // "kqueue"-based event loop mechanism.
 //
@@ -40,9 +40,9 @@ class kqueue_traits
     class sigdata_t
     {
         template <class Base> friend class kqueue_loop;
-        
+
         siginfo_t info;
-        
+
         public:
         // mandatory:
         int get_signo() { return info.si_signo; }
@@ -53,7 +53,7 @@ class kqueue_traits
         int get_sistatus() { return info.si_status; }
         int get_sival_int() { return info.si_value.sival_int; }
         void * get_sival_ptr() { return info.si_value.sival_ptr; }
-        
+
         // XSI
         int get_sierrno() { return info.si_errno; }
 
@@ -65,7 +65,7 @@ class kqueue_traits
 #endif
 
         void set_signo(int signo) { info.si_signo = signo; }
-    };    
+    };
 
     class fd_r;
 
@@ -92,7 +92,7 @@ class kqueue_traits
         {
         }
     };
-    
+
     constexpr static bool has_bidi_fd_watch = false;
     constexpr static bool has_separate_rw_fd_watches = true;
     constexpr static bool interrupt_after_fd_add = false;
@@ -187,10 +187,10 @@ template <class Base> class kqueue_loop : public Base
     //          receive*() methods will be called with lock held.
     //   receive_signal(sigdata_t &, user *) noexcept
     //   receive_fd_event(fd_r, user *, int flags) noexcept
-    
+
     using sigdata_t = kqueue_traits::sigdata_t;
     using fd_r = typename kqueue_traits::fd_r;
-    
+
     // The flag to specify poll() semantics for regular file readiness: that is, we want
     // ready-for-read to be returned even at end of file:
 #if defined(NOTE_FILE_POLL)
@@ -206,7 +206,7 @@ template <class Base> class kqueue_loop : public Base
     void process_events(struct kevent *events, int r)
     {
         std::lock_guard<decltype(Base::lock)> guard(Base::lock);
-        
+
         for (int i = 0; i < r; i++) {
             if (events[i].filter == EVFILT_SIGNAL) {
                 bool reenable = pull_signal(events[i].ident, events[i].udata);
@@ -228,11 +228,11 @@ template <class Base> class kqueue_loop : public Base
                 events[i].flags = EV_DISABLE;
             }
         }
-        
+
         // Now we disable all received events, to simulate EV_DISPATCH:
         kevent(kqfd, events, r, nullptr, 0, nullptr);
     }
-    
+
     // Pull a signal from pending, and report it, until it is no longer pending or the watch
     // should be disabled. Call with lock held.
     // Returns:  true if watcher should be enabled, false if disabled.
@@ -271,7 +271,7 @@ template <class Base> class kqueue_loop : public Base
     }
 
     public:
-    
+
     /**
      * kqueue_loop constructor.
      *
@@ -285,12 +285,12 @@ template <class Base> class kqueue_loop : public Base
         }
         Base::init(this);
     }
-    
+
     ~kqueue_loop()
     {
         close(kqfd);
     }
-    
+
     void set_filter_enabled(short filterType, uintptr_t ident, void *udata, bool enable)
     {
         // Note, on OpenBSD enabling or disabling filter will not alter the filter parameters (udata etc);
@@ -301,14 +301,14 @@ template <class Base> class kqueue_loop : public Base
         EV_SET(&kev, ident, filterType, enable ? EV_ENABLE : EV_DISABLE, fflags, 0, udata);
         kevent(kqfd, &kev, 1, nullptr, 0, nullptr);
     }
-    
+
     void remove_filter(short filterType, uintptr_t ident)
     {
         struct kevent kev;
         EV_SET(&kev, ident, filterType, EV_DELETE, 0, 0, 0);
-        kevent(kqfd, &kev, 1, nullptr, 0, nullptr);    
+        kevent(kqfd, &kev, 1, nullptr, 0, nullptr);
     }
-    
+
     //        fd:  file descriptor to watch
     //  userdata:  data to associate with descriptor
     //     flags:  IN_EVENTS | OUT_EVENTS | ONE_SHOT
@@ -430,14 +430,14 @@ template <class Base> class kqueue_loop : public Base
         return 0;
 #endif
     }
-    
+
     // flags specifies which watch to remove; ignored if the loop doesn't support
     // separate read/write watches.
     void remove_fd_watch(int fd, int flags)
-    {        
+    {
         remove_filter((flags & IN_EVENTS) ? EVFILT_READ : EVFILT_WRITE, fd);
     }
-    
+
     void remove_fd_watch_nolock(int fd, int flags)
     {
         remove_fd_watch(fd, flags);
@@ -448,25 +448,25 @@ template <class Base> class kqueue_loop : public Base
         struct kevent kev[2];
         EV_SET(&kev[0], fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
         EV_SET(&kev[1], fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-        
+
         kevent(kqfd, kev, 2, nullptr, 0, nullptr);
     }
-    
+
     void enable_fd_watch(int fd, void *userdata, int flags)
     {
         set_filter_enabled((flags & IN_EVENTS) ? EVFILT_READ : EVFILT_WRITE, fd, userdata, true);
     }
-    
+
     void enable_fd_watch_nolock(int fd, void *userdata, int flags)
     {
         enable_fd_watch(fd, userdata, flags);
     }
-    
+
     void disable_fd_watch(int fd, int flags)
     {
         set_filter_enabled((flags & IN_EVENTS) ? EVFILT_READ : EVFILT_WRITE, fd, nullptr, false);
     }
-    
+
     void disable_fd_watch_nolock(int fd, int flags)
     {
         disable_fd_watch(fd, flags);
@@ -492,7 +492,7 @@ template <class Base> class kqueue_loop : public Base
             throw new std::system_error(errno, std::system_category());
         }
         // TODO use EV_DISPATCH if available (not on OpenBSD/OS X)
-        
+
         // The signal might be pending already but won't be reported by kqueue in that case. We can queue
         // it immediately (note that it might be pending multiple times, so we need to re-check once signal
         // processing finishes if it is re-armed).
@@ -506,7 +506,7 @@ template <class Base> class kqueue_loop : public Base
             }
         }
     }
-    
+
     // Note, called with lock held:
     void rearm_signal_watch_nolock(int signo, void *userdata) noexcept
     {
@@ -518,14 +518,14 @@ template <class Base> class kqueue_loop : public Base
             kevent(kqfd, &evt, 1, nullptr, 0, nullptr);
         }
     }
-    
+
     void remove_signal_watch_nolock(int signo) noexcept
     {
         dprivate::dkqueue::unprep_signal(signo);
-        
+
         struct kevent evt;
         EV_SET(&evt, signo, EVFILT_SIGNAL, EV_DELETE, 0, 0, 0);
-        
+
         kevent(kqfd, &evt, 1, nullptr, 0, nullptr);
     }
 
@@ -579,7 +579,7 @@ template <class Base> class kqueue_loop : public Base
             }
             return;
         }
-        
+
         ts.tv_sec = 0;
         ts.tv_nsec = 0;
 

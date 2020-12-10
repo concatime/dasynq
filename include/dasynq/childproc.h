@@ -3,7 +3,7 @@
 
 #include <signal.h>
 
-#include "dasynq-btree_set.h"
+#include "dasynq/btree_set.h"
 
 namespace dasynq {
 
@@ -15,10 +15,10 @@ class pid_map
 {
     using bmap_t = btree_set<void *, pid_t>;
     bmap_t b_map;
-    
+
     public:
     using pid_handle_t = bmap_t::handle_t;
-    
+
     // Map entry: present (bool), data (void *)
     using entry = std::pair<bool, void *>;
 
@@ -30,7 +30,7 @@ class pid_map
         }
         return entry(true, b_map.node_data(*it));
     }
-    
+
     entry remove(pid_t key) noexcept
     {
         auto it = b_map.find(key);
@@ -40,7 +40,7 @@ class pid_map
         b_map.remove(*it);
         return entry(true, b_map.node_data(*it));
     }
-    
+
     void remove(pid_handle_t &hndl)
     {
         if (b_map.is_queued(hndl)) {
@@ -53,19 +53,19 @@ class pid_map
     {
         b_map.allocate(hndl);
     }
-    
+
     void unreserve(pid_handle_t &hndl) noexcept
     {
         b_map.deallocate(hndl);
     }
-    
+
     void add(pid_handle_t &hndl, pid_t key, void *val) // throws std::bad_alloc
     {
         reserve(hndl);
         b_map.node_data(hndl) = val;
         b_map.insert(hndl, key);
     }
-    
+
     void add_from_reserve(pid_handle_t &hndl, pid_t key, void *val) noexcept
     {
         b_map.node_data(hndl) = val;
@@ -100,10 +100,10 @@ template <class Base> class child_proc_events : public Base
     private:
     dprivate::pid_map child_waiters;
     reaper_mutex_t reaper_lock; // used to prevent reaping while trying to signal a process
-    
+
     protected:
     using sigdata_t = typename traits_t::sigdata_t;
-    
+
     template <typename T>
     bool receive_signal(T & loop_mech, sigdata_t &siginfo, void *userdata)
     {
@@ -124,19 +124,19 @@ template <class Base> class child_proc_events : public Base
             return Base::receive_signal(loop_mech, siginfo, userdata);
         }
     }
-    
+
     public:
     void reserve_child_watch_nolock(pid_watch_handle_t &handle)
     {
         child_waiters.reserve(handle);
     }
-    
+
     void unreserve_child_watch(pid_watch_handle_t &handle) noexcept
     {
         std::lock_guard<decltype(Base::lock)> guard(Base::lock);
         unreserve_child_watch_nolock(handle);
     }
-    
+
     void unreserve_child_watch_nolock(pid_watch_handle_t &handle) noexcept
     {
         child_waiters.unreserve(handle);
@@ -146,7 +146,7 @@ template <class Base> class child_proc_events : public Base
     {
         child_waiters.add(handle, child, val);
     }
-    
+
     void add_reserved_child_watch(pid_watch_handle_t &handle, pid_t child, void *val) noexcept
     {
         std::lock_guard<decltype(Base::lock)> guard(Base::lock);
@@ -157,7 +157,7 @@ template <class Base> class child_proc_events : public Base
     {
         child_waiters.add_from_reserve(handle, child, val);
     }
-    
+
     // Stop watching a child, but retain watch reservation
     void stop_child_watch(pid_watch_handle_t &handle) noexcept
     {
@@ -176,7 +176,7 @@ template <class Base> class child_proc_events : public Base
         child_waiters.remove(handle);
         child_waiters.unreserve(handle);
     }
-    
+
     // Get the reaper lock, which can be used to ensure that a process is not reaped while attempting to
     // signal it.
     reaper_mutex_t &get_reaper_lock() noexcept

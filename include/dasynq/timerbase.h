@@ -6,7 +6,7 @@
 
 #include <time.h>
 
-#include "dasynq-daryheap.h"
+#include "dasynq/daryheap.h"
 
 namespace dasynq {
 

@@ -1,5 +1,5 @@
-#include "dasynq-select.h"
-#include "dasynq-signal.h"
+#include "dasynq/select.h"
+#include "dasynq/signal.h"
 
 namespace dasynq {
 

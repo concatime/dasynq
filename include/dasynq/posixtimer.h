@@ -6,8 +6,8 @@
 #include <time.h>
 #include <signal.h>
 
-#include "dasynq-config.h"
-#include "dasynq-timerbase.h"
+#include "dasynq/config.h"
+#include "dasynq/timerbase.h"
 
 namespace dasynq {
 

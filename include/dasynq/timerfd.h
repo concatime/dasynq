@@ -4,7 +4,7 @@
 #include <sys/timerfd.h>
 #include <time.h>
 
-#include "dasynq-timerbase.h"
+#include "dasynq/timerbase.h"
 
 namespace dasynq {
 
@@ -24,7 +24,7 @@ template <class Base> class timer_fd_events : public timer_base<Base>
     private:
     int timerfd_fd = -1;
     int systemtime_fd = -1;
-    
+
     // Set the timerfd timeout to match the first timer in the queue (disable the timerfd
     // if there are no active timers).
     static void set_timer_from_queue(int fd, timer_queue_t &queue) noexcept
@@ -40,7 +40,7 @@ template <class Base> class timer_fd_events : public timer_base<Base>
         }
         timerfd_settime(fd, TFD_TIMER_ABSTIME, &newtime, nullptr);
     }
-    
+
     void process_timer(clock_type clock, int fd) noexcept
     {
         timer_queue_t &queue = this->queue_for_clock(clock);
@@ -179,7 +179,7 @@ template <class Base> class timer_fd_events : public timer_base<Base>
         }
     }
 
-    // Set timer relative to current time:    
+    // Set timer relative to current time:
     void set_timer_rel(timer_handle_t & timer_id, const time_val &timeout, const time_val &interval,
             bool enable, clock_type clock = clock_type::MONOTONIC) noexcept
     {
@@ -189,7 +189,7 @@ template <class Base> class timer_fd_events : public timer_base<Base>
 
         set_timer(timer_id, alarmtime, interval, enable, clock);
     }
-    
+
     ~timer_fd_events()
     {
         close(timerfd_fd);
