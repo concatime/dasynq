@@ -4,14 +4,20 @@ project('dasynq', 'cpp',
     'b_ndebug=if-release',
     'buildtype=debugoptimized',
     'c_std=c++11',
-    'warning_level=3',
+  # 'warning_level=3',
   # 'werror=true',
   ],
   license: 'Apache-2.0',
   version: '1.1.7-development',
 )
 
+dasynq_deps = []
+if target_machine.system() == 'freebsd'
+  dasynq_deps += meson.get_compiler('cpp').find_library('rt')
+endif
+
 dasynq_dep = declare_dependency(
+  dependencies: dasynq_deps,
   include_directories: include_directories('include'),
 )
 

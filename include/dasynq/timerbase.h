@@ -5,6 +5,7 @@
 #include <mutex>
 
 #include <ctime>
+//#include <sys/time.h>
 
 #include "daryheap.h"
 
@@ -398,7 +399,7 @@ template <typename Base> class timer_base : public Base
     // set do_wait to false; otherwise, if any timers are pending, set tv to the delay before
     // the next timer expires and set wait_tv to &tv.
     // (If no timers are active, none of the output parameters are set).
-    inline void process_timers(clock_type clock, bool &do_wait, timeval &tv, timeval *&wait_tv)
+    inline void process_timers(clock_type clock, bool &do_wait, struct timeval &tv, struct timeval *&wait_tv)
     {
         timespec now;
         auto &timer_q = this->queue_for_clock(clock);
@@ -440,7 +441,7 @@ template <typename Base> class timer_base : public Base
     // set do_wait to false; otherwise, if any timers are pending, set ts to the delay before
     // the next timer expires and set wait_ts to &ts.
     // (If no timers are active, none of the output parameters are set).
-    inline void process_monotonic_timers(bool &do_wait, timeval &tv, timeval *&wait_tv)
+    inline void process_monotonic_timers(bool &do_wait, struct timeval &tv, struct timeval *&wait_tv)
     {
         process_timers(clock_type::MONOTONIC, do_wait, tv, wait_tv);
     }
